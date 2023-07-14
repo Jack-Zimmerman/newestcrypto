@@ -1,0 +1,4 @@
+###
+
+in block.py, need to eventually find a way to derive variable difficulty
+in block.py, need to verify every transaction being added

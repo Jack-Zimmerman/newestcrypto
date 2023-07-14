@@ -1,0 +1,339 @@
+from crypto import *
+from transaction import Transaction
+from wallet import Wallet
+import time
+import json
+import os
+
+
+
+#updatedlevel:
+# 0 -> nothing
+# 1 -> head info updated
+# 2 -> on the most recent block
+class Chain:
+    
+    def __init__(self, name="main"):
+        self.updatedLevel = False
+        self.height = -1
+        self.chainName = name
+        
+    def initChain(self):
+        
+        if not os.path.isdir("blockchain"):
+            os.mkdir("blockchain")
+            
+        if not os.path.isdir("blockchain/batches"):
+            os.mkdir("blockchain/batches")
+        
+        if not os.path.isdir("blockchain/accounts"):
+            os.mkdir("blockchain/accounts")
+            
+    def dumpChain(self) -> None:
+        batch = 0
+        while os.path.isfile(f"blockchain/batches/{batch}.dat"):
+            os.remove(f"blockchain/batches/{batch}.dat")
+            batch += 1
+            
+        for file in os.listdir("blockchain/accounts"):
+            os.remove(f"blockchain/accounts/{file}")
+            
+        
+        
+    def writeChainInfo(self):
+        with open("blockchain/chaininfo", "w") as file:
+            file.write(json.dumps(self.__dict__))
+        
+
+            
+            
+    def addBlock(self, block):
+        if not isinstance(block, dict):
+            block = block.__dict__
+            
+ 
+ 
+        assert (block["height"] - self.height) == 1
+            
+        self.height = block["height"]
+        
+        blockAlreadyInChain = (self.readBlock(block["height"]) != None)
+        
+        if blockAlreadyInChain:
+            return False
+        
+        #new file every 100 blocks
+        file = f"blockchain/batches/{block['height']//100}.dat"
+        
+        if not os.path.isfile(file):
+            with open(file, "w") as toWrite:
+                toWrite.write(json.dumps([block]))
+        else:
+            chunk = None
+            with open(file, "r") as toRead:
+                chunk = json.loads(toRead.read())
+                chunk.append(block)
+                
+            with open(file, "w") as toWrite:
+                toWrite.write(json.dumps(chunk))
+                
+                
+        self.writeChainInfo()
+                
+        return True
+            
+    
+    @staticmethod
+    def readBlock(height) -> dict:
+        file = f"blockchain/batches/{height//100}.dat"
+
+        
+        if not os.path.isfile(file):
+            return None
+        
+        with open(file, "r") as toRead:
+            chunk = json.loads(toRead.read())
+            
+            if len(chunk) <= height%100:
+                return None
+            
+            return chunk[(height%100)]
+        
+    @staticmethod
+    def calculateDifficulty(height) -> int: 
+        if height < 144:
+            return STARTING_DIFFICULTY
+
+        baseHeight = height - 144
+
+        baseBlock = Chain.readBlock(baseHeight)
+        mostRecent = Chain.readBlock(height-1)
+
+        expectedTimespan = 144 * 10 * 60 # one day worth of seconds
+        timespan = mostRecent["timestamp"] - baseBlock["timestamp"]
+
+
+
+        modifier = expectedTimespan/timespan
+
+        return round(mostRecent["difficulty"] * modifier)
+    
+    def getInfoFromFile(self):
+        with open("blockchain/chaininfo", "r") as file:
+            info = json.loads(file.read())
+            
+            self.height = info["height"]
+            self.updatedLevel = 1
+            
+            
+            
+    def initAccount(self, address, startNonce, startBalance):
+        assert type(startNonce) == int
+        assert type(startBalance) == int
+        
+        account = {
+            "nonce" : startNonce, 
+            "balance" : startBalance,
+        }
+        
+        
+        assert os.path.isdir("blockchain/accounts")
+        
+        #first 4 letters, so maximum of 16**3 files
+        filename = f"blockchain/accounts/{address[2:5]}.dat"
+        if os.path.isfile(filename):
+            alreadyAccounts = {}
+            with open(filename, "r") as toRead:
+                alreadyAccounts = json.loads(toRead.read())
+            
+            alreadyAccounts[address] = account
+            
+            with open(filename, "w") as toWrite:
+                toWrite(json.dumps(alreadyAccounts))
+        else:
+            accounts = {}
+            accounts[address] = account
+            
+            with open(filename, "w") as toWrite:
+                toWrite.write(json.dumps(accounts))
+                                
+    
+    #will return None if nothing is found
+    def getAccountInfo(self, address):
+        filename = f"blockchain/accounts/{address[2:5]}.dat"
+        
+        if os.path.isfile(filename):
+            with open(filename, "r") as toRead:
+                accounts = json.loads(toRead.read())
+                
+                return accounts.get(address)
+        else:
+            return None
+        
+    def updateAccount(self, address, nonce, balance):
+        filename = f"blockchain/accounts/{address[2:5]}.dat"
+        
+        if self.getAccountInfo(address) == None:
+            self.initAccount(address, nonce, balance)
+        else:
+            accounts = {}
+            with open(filename, "r") as toRead:
+                accounts = json.loads(toRead.read())
+                
+                accounts[address]["nonce"] = nonce
+                accounts[address]["balance"] = balance
+                
+            with open(filename, "w") as toWrite: 
+                toWrite.write(json.dumps(accounts))
+                
+    def modifyBalanceAndNonce(self, address, deltaBalance, nonce=None):
+        oldInfo = self.getAccountInfo(address)
+        
+        if oldInfo == None:
+            startNonce = 0
+            if nonce != None:
+                startNonce = nonce
+                
+            assert deltaBalance >= 0
+            
+            self.initAccount(address, startNonce, deltaBalance)
+        else:
+            changedNonce = oldInfo["nonce"]
+            if nonce != None:
+                assert nonce != oldInfo["nonce"]
+                assert max(nonce, oldInfo["nonce"]) == nonce
+                
+                changedNonce = nonce
+                
+            self.updateAccount(address, changedNonce, oldInfo["balance"]+deltaBalance)
+                    
+                
+        return True
+
+    def verifyIncomingTransaction(self, transaction):   
+        try:
+            try:
+                transaction = transaction.__dict__
+            except:
+                if not isinstance(transaction, dict):
+                    return False
+                
+                
+            json.loads(json.dumps(transaction), object_hook=Transaction)
+        except:
+            return False
+        
+        senderInfo = self.getAccountInfo(transaction["sender"])
+        balance = senderInfo["balance"]
+        total = Transaction.calculateTotal(transaction)
+        
+        for output in transaction["outputs"]:
+            if output["amount"] < 0:
+                return False
+        
+        if total > balance:
+            return False
+        elif Wallet.verifyTransactionSignature(transaction):
+            return False
+        
+        
+        return True
+    
+    
+    def fufillVerifiedBlockTransactions(self, block):
+        assert isinstance(block, dict)
+        
+        for transac in block["transactions"]:
+            if transac["sender"] == COINBASE:
+                for output in transac["outputs"]:
+                    print(output)
+                    self.modifyBalanceAndNonce(output["reciever"], output["amount"])
+            else:
+                totalAmount = Transaction.calculateTotal(transac)
+                self.modifyBalanceAndNonce(transac["sender"], -totalAmount, nonce=transac["nonce"])
+                for output in transac["outputs"]:
+                    assert output["amount"] >= 0
+                    self.modifyBalanceAndNonce(output["reciver"], output["amount"])
+                
+    
+    
+    def verifyBlock(self, block):
+        try:
+            block = block.__dict__
+        except:
+            if not isinstance(block, dict):
+                return False
+            
+        lastBlock = self.readBlock(block["height"]-1)
+            
+        #test to see if hash is valid
+        headerInfo = str(block["timestamp"]) + json.dumps(block["transactions"]) + lastBlock["header"]
+        intendedHeader = hashHeader(headerInfo, block["nonce"])
+        difficulty = self.calculateDifficulty(block["height"])
+        
+        #if block has invalid difficulty
+        if block["difficulty"] != difficulty:
+            return False
+        
+        #lying about header
+        if intendedHeader != block["header"]:
+            return False
+        
+        #check to see proof of work
+        if not headerHashAndCheck(headerInfo, block["nonce"], difficulty):
+            return False
+        
+        #check timeframe, cant be before previous block
+        if block["timestamp"] < lastBlock["timestamp"]:
+            return False
+        
+        #now on to transactions
+        
+        #check coinbase transaction
+        #filtering other transactions
+        coinbaseTransactions = list(filter(lambda transac: transac["sender"] == COINBASE, block["transactions"]))
+        if len(coinbaseTransactions) != 1:
+            return False
+        
+        coinbaseTransac = coinbaseTransactions[0]
+
+        #can go anywhere, but must be reward amount
+        if Transaction.calculateTotal(coinbaseTransac) != REWARD:
+            return False
+        
+        #verify transac signature
+        if not Wallet.verifyTransactionSignature(coinbaseTransac, coinbaseException=block["miner"]):
+            return False
+        
+        
+        #run through transactions
+        for transac in block["transactions"]:
+            if transac["sender"] == COINBASE:
+                continue 
+            
+            if not self.verifyIncomingTransaction(transac):
+                return False
+            
+        return True
+    
+            
+        
+        
+        
+        
+        
+        
+        
+            
+        
+    
+    
+            
+            
+            
+            
+        
+                
+                
+        
+        
