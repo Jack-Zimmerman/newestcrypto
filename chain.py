@@ -51,16 +51,16 @@ class Chain:
         if not isinstance(block, dict):
             block = block.__dict__
             
- 
- 
         assert (block["height"] - self.height) == 1
             
-        self.height = block["height"]
+        self.height += 1
         
         blockAlreadyInChain = (self.readBlock(block["height"]) != None)
         
         if blockAlreadyInChain:
             return False
+        
+        assert self.verifyBlock(block)
         
         #new file every 100 blocks
         file = f"blockchain/batches/{block['height']//100}.dat"
@@ -79,6 +79,7 @@ class Chain:
                 
                 
         self.writeChainInfo()
+        self.fufillVerifiedBlockTransactions(block)
                 
         return True
             
@@ -134,6 +135,7 @@ class Chain:
         account = {
             "nonce" : startNonce, 
             "balance" : startBalance,
+            "associated" : []
         }
         
         
@@ -145,6 +147,10 @@ class Chain:
             alreadyAccounts = {}
             with open(filename, "r") as toRead:
                 alreadyAccounts = json.loads(toRead.read())
+                
+            #if somehow exists
+            if alreadyAccounts.get(address, None) != None:
+                return
             
             alreadyAccounts[address] = account
             
@@ -170,7 +176,7 @@ class Chain:
         else:
             return None
         
-    def updateAccount(self, address, nonce, balance):
+    def updateAccount(self, address, nonce, balance, associatedBlockHeight=None):
         filename = f"blockchain/accounts/{address[2:5]}.dat"
         
         if self.getAccountInfo(address) == None:
@@ -183,10 +189,13 @@ class Chain:
                 accounts[address]["nonce"] = nonce
                 accounts[address]["balance"] = balance
                 
+                if associatedBlockHeight != None:
+                    accounts[address]["associated"].append(associatedBlockHeight)
+                
             with open(filename, "w") as toWrite: 
                 toWrite.write(json.dumps(accounts))
                 
-    def modifyBalanceAndNonce(self, address, deltaBalance, nonce=None):
+    def modifyBalanceAndNonce(self, address, deltaBalance, nonce=None, associatedBlockHeight=None):
         oldInfo = self.getAccountInfo(address)
         
         if oldInfo == None:
@@ -204,8 +213,9 @@ class Chain:
                 assert max(nonce, oldInfo["nonce"]) == nonce
                 
                 changedNonce = nonce
+        
                 
-            self.updateAccount(address, changedNonce, oldInfo["balance"]+deltaBalance)
+            self.updateAccount(address, changedNonce, oldInfo["balance"]+deltaBalance, associatedBlockHeight=associatedBlockHeight)
                     
                 
         return True
@@ -246,18 +256,21 @@ class Chain:
         for transac in block["transactions"]:
             if transac["sender"] == COINBASE:
                 for output in transac["outputs"]:
-                    print(output)
-                    self.modifyBalanceAndNonce(output["reciever"], output["amount"])
+                    self.modifyBalanceAndNonce(output["reciever"], output["amount"], nonce=transac["nonce"], associatedBlockHeight=block["height"])
             else:
                 totalAmount = Transaction.calculateTotal(transac)
-                self.modifyBalanceAndNonce(transac["sender"], -totalAmount, nonce=transac["nonce"])
+                self.modifyBalanceAndNonce(transac["sender"], -totalAmount, nonce=transac["nonce"], associatedBlockHeight=block["height"])
                 for output in transac["outputs"]:
                     assert output["amount"] >= 0
-                    self.modifyBalanceAndNonce(output["reciver"], output["amount"])
+                    self.modifyBalanceAndNonce(output["reciver"], output["amount"], associatedBlockHeight=block["height"])
                 
     
     
     def verifyBlock(self, block):
+        if block["height"] == 0:
+            return True
+        
+        
         try:
             block = block.__dict__
         except:
@@ -265,7 +278,8 @@ class Chain:
                 return False
             
         lastBlock = self.readBlock(block["height"]-1)
-            
+    
+
         #test to see if hash is valid
         headerInfo = str(block["timestamp"]) + json.dumps(block["transactions"]) + lastBlock["header"]
         intendedHeader = hashHeader(headerInfo, block["nonce"])

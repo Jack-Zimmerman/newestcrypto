@@ -25,38 +25,22 @@ lol.initChain()
 wallet = Wallet("JZ")
 wallet.initWallet()
 
-block = Block(wallet.public, pastBlock)
-block.complete(wallet)
 
-
-nonce = 0
-while not Block.tryNonce(block, nonce):
-    nonce += 1
+block = None
+for x in range(100):
+    block = Block(wallet.public, pastBlock)
+    block.complete(wallet)
     
-block.solidify(nonce)
-
-block = block.__dict__
-
-lol.addBlock(block)
-
-lol.fufillVerifiedBlockTransactions(block)
-
-newBlock = Block(wallet.public, block)
-newBlock.complete(wallet)
-
-nonce = 0
-while not Block.tryNonce(newBlock, nonce):
-    nonce += 1
     
-newBlock.solidify(nonce)
-
-newBlock = newBlock.__dict__
-print(lol.verifyBlock(newBlock))
-
-lol.addBlock(newBlock)
-
-lol.fufillVerifiedBlockTransactions(newBlock)
-
+    nonce = 0
+    while not Block.tryNonce(block, nonce):
+        nonce += 1
+        
+    block.solidify(nonce)
+    
+    lol.addBlock(block)
+    pastBlock = block.__dict__
+    
 
 
 

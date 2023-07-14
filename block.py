@@ -62,7 +62,12 @@ class Block:
         
     @staticmethod
     def tryNonce(block, nonce):
-        return headerHashAndCheck(block.headerInfo, nonce, block.difficulty)
+        try:
+            block = block.__dict__
+        except:
+            assert isinstance(block, dict)
+            
+        return headerHashAndCheck(block["headerInfo"], nonce, block["difficulty"])
    
     
     

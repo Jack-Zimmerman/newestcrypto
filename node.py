@@ -23,14 +23,7 @@ HOST = socket.gethostname()
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
 
-'''
-This sets the listening port, default port 8080
-'''
-PORT = int(sys.argv[1])
-
-'''
-This sets the working directory of the HTTPServer, defaults to directory where script is executed.
-'''
+PORT = 8080
 CWD = os.getcwd()
     
     
@@ -65,11 +58,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         self.send_header("Content-type", "text/html")
         self.end_headers()
         
-        self.HEADERS = {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36',
-        }
 
-        
         total = self.path.split("?")
         
         if len(total) == 1:
@@ -78,8 +67,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.path = total[0]
             self.queries = dict(urllib.parse.parse_qsl(total[1]))
         
-        
-        print(self.address_string())
         
         match self.path:
             case "/block":
@@ -180,13 +167,11 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.respond("rejected")
             
             
-    def testNode(self, nodeIP):
-        print(self.address_string())
-        url = f"http://example.com"
-        print(url)
+    def testNode(self):
+        url = f"http://{self.address_string()}:8080/test"
         
         
-        result = request.urlopen(url)
+        result = requests.get(url, timeout=1).text
         
         
         return result
@@ -196,13 +181,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     def registernode(self):
         nodeIP = self.address_string()
         
-        print(nodeIP)
-        
         #testing to see if node is alive
         
-        response = self.testNode(nodeIP)
-        
-        print("hello")
+        response = self.testNode()
         
         if response != "alive":
             self.respond("nope")
@@ -213,74 +194,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             with open("nodeinfo/nodes", "w") as toWrite:
                 toWrite.write(json.dumps(self.nodes))
 
-            
-
-
-                
         
-        
-        
-            
-        
-        
-    
-            
-
-        
-        
-pastBlock = types.SimpleNamespace()
-pastBlock.height = -1
-pastBlock.header = "0"
-pastBlock.difficulty = STARTING_DIFFICULTY
-
-pastBlock = pastBlock.__dict__
-
-
-lol = Chain()
-lol.dumpChain()
-lol.initChain()
-
-
-wallet = Wallet("JZ")
-wallet.initWallet()
-
-block = Block(wallet.public, pastBlock)
-block.complete(wallet)
-
-
-nonce = 0
-while not Block.tryNonce(block, nonce):
-    nonce += 1
-    
-block.solidify(nonce)
-
-block = block.__dict__
-
-lol.addBlock(block)
-
-lol.fufillVerifiedBlockTransactions(block)
-
-newBlock = Block(wallet.public, block)
-newBlock.complete(wallet)
-
-nonce = 0
-while not Block.tryNonce(newBlock, nonce):
-    nonce += 1
-    
-newBlock.solidify(nonce)
-
-newBlock = newBlock.__dict__
-print(lol.verifyBlock(newBlock))
-
-lol.addBlock(newBlock)
-
-lol.fufillVerifiedBlockTransactions(newBlock)
-
-lol.writeChainInfo()
-
-
-
-server = ThreadingSimpleServer((sys.argv[2], PORT), NodeHTTP)
+server = ThreadingSimpleServer(("0.0.0.0", PORT), NodeHTTP)
 print("Serving HTTP traffic from", CWD, "on", HOST, "using port", PORT)
 
 

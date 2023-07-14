@@ -58,10 +58,12 @@ class Wallet:
         with open(filename, "r") as toRead:   
             nonce = json.loads(toRead.read())["nonce"]
             
-        self.nonce = max(self.nonce, nonce+1)
+        self.nonce = max(self.nonce+1, nonce+1)
         
         with open(filename, "w") as toWrite:
             toWrite.write(json.dumps(self.__dict__))
+            
+        return nonce
         
         
     @staticmethod
