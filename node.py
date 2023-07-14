@@ -197,9 +197,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
 server = ThreadingSimpleServer(("0.0.0.0", PORT), NodeHTTP)
 print("Serving HTTP traffic from", CWD, "on", HOST, "using port", PORT)
-
-
-requests.get("http://192.168.68.64:8080/registernode")
     
 try:
     server.serve_forever()
