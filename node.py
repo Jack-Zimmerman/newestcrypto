@@ -469,6 +469,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
 
 chain = Chain()
 chain.dumpChain()
+chain.initChain()
 
 getChainUpToDate(chain)
 
