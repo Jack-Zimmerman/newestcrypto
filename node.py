@@ -25,7 +25,7 @@ HOST = socket.gethostname()
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
 
-port = 8080
+port = 3141
 CWD = os.getcwd()
     
     
@@ -110,7 +110,7 @@ def downloadFromNode(chain: Chain, node):
 
 class NodeHTTP(SimpleHTTPRequestHandler): 
     global port
-    port = 8080
+    port = 3141
     
     global transactionsPool
     transactionsPool = None
@@ -481,8 +481,8 @@ getChainUpToDate(chain)
 
     
     
-def run(server_class=ThreadingSimpleServer, handler_class=NodeHTTP, port=8080, CWD=None, HOST=None):
-    server_address = ("", port)
+def run(server_class=ThreadingSimpleServer, handler_class=NodeHTTP, port=3141, CWD=None, HOST=None):
+    server_address = ("0.0.0.0", port)
     
     server  = server_class(server_address, handler_class)
     
