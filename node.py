@@ -96,6 +96,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             case "/minersuccess":
                 print(self.address_string())
             case "/startmining":
+                print(self.address_string())
                 self.startMining()
                 self.respond("Started mining lol, but this process is threaded so have fun or something")
             case _:
