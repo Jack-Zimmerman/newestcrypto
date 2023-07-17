@@ -163,7 +163,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.queries = dict(urllib.parse.parse_qsl(total[1]))
         
         #try and add this requester to node list
-        self.registernode()
+        if self.path != "/test":
+            self.registernode()
         
         match self.path:
             case "/startnode":
