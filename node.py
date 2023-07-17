@@ -46,7 +46,6 @@ def getChainUpToDate(chain: Chain):
     #find first available node
     for node in nodes:
         val = downloadFromNode(chain, node)
-        print(val)
         if val == True:
             return
                     
@@ -82,7 +81,6 @@ def downloadFromNode(chain: Chain, node):
                 newBlock = None
                 try:
                     newBlock = json.loads(urllib.parse.unquote(requests.get(request, timeout=5)))
-                    print(newBlock)
                 except:
                     return 4
                 
@@ -405,10 +403,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         else:
             #if unique add, else dont
             if not nodeIP in nodes:
-                nodes.add(nodeIP)
+                nodes.append(nodeIP)
                 
                 with open("nodeinfo/nodes", "w") as toWrite:
-                    toWrite.write(json.dumps(self.nodes))
+                    toWrite.write(json.dumps(nodes))
             else:
                 return 
             
@@ -479,7 +477,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
 
 chain = Chain()
 chain.initChain()
-chain.dumpChain()
 
 
 getChainUpToDate(chain)

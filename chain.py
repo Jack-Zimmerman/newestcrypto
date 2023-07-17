@@ -56,8 +56,7 @@ class Chain:
     def addBlock(self, block):
         if not isinstance(block, dict):
             block = block.__dict__
-            
-        print(self.height)
+    
         assert (block["height"] - self.height) == 1
             
         self.height += 1
