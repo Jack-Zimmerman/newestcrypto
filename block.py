@@ -39,7 +39,7 @@ class Block:
         
         self.addCoinbase(wallet)
         
-        self.headerInfo = str(self.timestamp) + json.dumps(self.transactions) + self.tempPast["header"]
+        self.headerInfo = bytes(str(self.timestamp) + json.dumps(self.transactions) + self.tempPast["header"], "utf-8").hex()
         
     def solidify(self,nonce) -> None:
         self.header = hashHeader(self.headerInfo, nonce)

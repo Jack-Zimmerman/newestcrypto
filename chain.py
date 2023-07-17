@@ -142,7 +142,7 @@ class Chain:
         assert os.path.isdir("blockchain/accounts")
         
         #first 4 letters, so maximum of 16**3 files
-        filename = f"blockchain/accounts/{address[2:5]}.dat"
+        filename = f"blockchain/accounts/{address[0:3]}.dat"
         if os.path.isfile(filename):
             alreadyAccounts = {}
             with open(filename, "r") as toRead:
@@ -166,7 +166,7 @@ class Chain:
     
     #will return None if nothing is found
     def getAccountInfo(self, address):
-        filename = f"blockchain/accounts/{address[2:5]}.dat"
+        filename = f"blockchain/accounts/{address[0:3]}.dat"
         
         if os.path.isfile(filename):
             with open(filename, "r") as toRead:
@@ -177,7 +177,7 @@ class Chain:
             return None
         
     def updateAccount(self, address, nonce, balance, associatedBlockHeight=None):
-        filename = f"blockchain/accounts/{address[2:5]}.dat"
+        filename = f"blockchain/accounts/{address[0:3]}.dat"
         
         if self.getAccountInfo(address) == None:
             self.initAccount(address, nonce, balance)
@@ -206,6 +206,7 @@ class Chain:
             assert deltaBalance >= 0
             
             self.initAccount(address, startNonce, deltaBalance)
+            self.updateAccount(address, startNonce, deltaBalance, associatedBlockHeight=associatedBlockHeight)
         else:
             changedNonce = oldInfo["nonce"]
             if nonce != None:
@@ -281,7 +282,7 @@ class Chain:
     
 
         #test to see if hash is valid
-        headerInfo = str(block["timestamp"]) + json.dumps(block["transactions"]) + lastBlock["header"]
+        headerInfo = bytes(str(block["timestamp"]) + json.dumps(block["transactions"]) + lastBlock["header"], "utf-8").hex()
         intendedHeader = hashHeader(headerInfo, block["nonce"])
         difficulty = self.calculateDifficulty(block["height"])
         

@@ -27,7 +27,7 @@ wallet.initWallet()
 
 
 block = None
-for x in range(100):
+for x in range(5):
     block = Block(wallet.public, pastBlock)
     block.complete(wallet)
     
@@ -35,6 +35,7 @@ for x in range(100):
     nonce = 0
     while not Block.tryNonce(block, nonce):
         nonce += 1
+        
         
     block.solidify(nonce)
     

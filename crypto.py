@@ -9,9 +9,9 @@ def computeDoubleHash(input:str) -> str:
     return computeHash(computeHash(input))
 
 def hashHeader(headerInfo, nonce) -> str:
-    headerArr = bytes(headerInfo, "utf-8")
+    headerVal = int(headerInfo, 16)
     
-    newVal = int.from_bytes(headerArr, "big") + nonce
+    newVal = headerVal + nonce
     
     return computeDoubleHash(str(newVal))
 
@@ -19,9 +19,9 @@ def hashHeader(headerInfo, nonce) -> str:
 def headerHashAndCheck(headerInfo, nonce, difficulty):
     target = (2**256 - 1)//difficulty
     
-    headerArr = bytes(headerInfo, "utf-8")
+    headerVal = int(headerInfo, 16)
     
-    newVal = int.from_bytes(headerArr, "big") + nonce
+    newVal = headerVal + nonce
     
     intValProof = int(computeDoubleHash(str(newVal)), 16)
     

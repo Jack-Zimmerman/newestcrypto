@@ -15,6 +15,8 @@ from wallet import *
 import requests
 import random
 
+from subprocess import PIPE, Popen
+
 import time
 import types
 
@@ -43,13 +45,23 @@ CWD = os.getcwd()
 
 
 
-class NodeHTTP(SimpleHTTPRequestHandler):        
+class NodeHTTP(SimpleHTTPRequestHandler): 
+    global value    
+    value = 0
+    
+    global transactionsPool
+    transactionsPool = []
+    
+    global miner
+    miner = None
+     
     def do_GET(self) -> None:
+        global value 
+        global transactionsPool
+
         self.chain = Chain()
         self.chain.getInfoFromFile()
         
-        
-        self.transactionsPool = []
         self.nodes = []
         
         self.initNodeInfo()
@@ -81,6 +93,11 @@ class NodeHTTP(SimpleHTTPRequestHandler):
                 self.registernode()
             case "/test":
                 self.respond("alive")
+            case "/minersuccess":
+                print(self.address_string())
+            case "/startmining":
+                self.startMining()
+                self.respond("Started mining lol, but this process is threaded so have fun or something")
             case _:
                 self.respond("unknown")
                 
@@ -98,7 +115,17 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.nodes = json.loads(toRead.read())
 
             
+    
+    def startMining(self):
+        global miner
+        miner = Popen("start python mine.py 313638393535333938335b7b2273656e646572223a202230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c202274696d657374616d70223a20313638393535333938332c20226f757470757473223a205b7b227265636965766572223a2022303264613462333039363933376139396465633634303431383936343837303666636434333337303863303535383239643965363138666362313063363231323035222c2022616d6f756e74223a203130303030303030307d5d2c20226e6f6e6365223a203736372c20227369676e6174757265223a20223832306466316161623432336365303233323063303033383133303736313731336330386435633938326530616638356661376233343939363135343831323865663737653765383832623638303935656462363961313335316461396639323566376330623163326535323934303830656237613939336466623163306338222c20226e6f7465223a2022222c202268617368223a202266616339643063396538333337343034313331373830373131386533623835326338306431343463643139363234356533653639373736343665373139376263227d5d30 10000000 8080", shell=True, stdin=PIPE, stderr=PIPE, stdout=PIPE)
         
+        
+    def minerSuccess(self):
+        global miner
+        miner = None
+        
+        #first check to see if block already exists, then go back to doing ur thing
         
         
                 
@@ -124,6 +151,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
                 
         
     
+    #start and end inclusive
     def multiblock(self):
         start = int(self.queries["start"])
         end = int(self.queries["end"])
@@ -147,10 +175,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         self.respond(json.dumps(blocks))
         
     def newtransaction(self):
+        global transactionsPool
+        
         transaction = urllib.parse.unquote(self.queries["transaction"])
         
         if self.chain.verifyIncomingTransaction(transaction) == True:
-            self.transactionsPool.append(transaction)
+            transactionsPool.append(transaction)
             self.respond("accepted")
         else:
             self.respond("rejected")
@@ -195,15 +225,27 @@ class NodeHTTP(SimpleHTTPRequestHandler):
                 toWrite.write(json.dumps(self.nodes))
 
         
-server = ThreadingSimpleServer(("0.0.0.0", PORT), NodeHTTP)
-print("Serving HTTP traffic from", CWD, "on", HOST, "using port", PORT)
+#server = ThreadingSimpleServer(("0.0.0.0", PORT), NodeHTTP)
+
     
-try:
-    server.serve_forever()
-except KeyboardInterrupt:
-    print("\nShutting down server per users request.")
-    sys.exit()
     
+def run(server_class=ThreadingSimpleServer, handler_class=NodeHTTP, port=8080, CWD=None, HOST=None):
+    server_address = ("", port)
+    
+    server  = server_class(server_address, handler_class)
+    
+    print("Serving HTTP traffic from", CWD, "on", HOST, "using port", PORT)
+
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down server per users request.")
+        sys.exit()
+            
+
+    
+run(CWD=CWD, HOST=HOST)
     
     
     
