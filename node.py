@@ -397,8 +397,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         response = self.testNode()
         
         #if isnt running correct node program, dont register
-        if response != "alive":
-            self.respond("nope")
+        if response != "alive": 
             return
         else:
             #if unique add, else dont
