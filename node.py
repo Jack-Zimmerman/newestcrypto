@@ -358,9 +358,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
             
     def testNode(self):
-        global PORT
+        global port
         
-        url = f"http://{self.address_string()}:{PORT}/test"
+        url = f"http://{self.address_string()}:{port}/test"
         
         
         try:
