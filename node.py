@@ -184,7 +184,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             case "/test":
                 self.respond("alive")
             case "/getheight":
-                self.respond(int(chain.height))
+                self.respond(str(chain.height))
             case "/minersuccess":
                 self.minerSuccess()
             case _:
