@@ -21,7 +21,7 @@ def mine(headerInfo, difficulty, returnPort):
             
     #if it gets to this point, it must have been successful
     
-    request = f"http://127.0.0.1:{returnPort}\miningsuccess?nonce={nonce}"
+    request = f"http://127.0.0.1:{returnPort}/minersuccess?nonce={nonce}"
     
     requests.get(request)
     

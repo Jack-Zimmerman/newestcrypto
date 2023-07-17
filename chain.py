@@ -29,6 +29,9 @@ class Chain:
         if not os.path.isdir("blockchain/accounts"):
             os.mkdir("blockchain/accounts")
             
+        if not os.path.isfile("blockchain/chaininfo.dat"):
+            self.writeChainInfo()
+            
     def dumpChain(self) -> None:
         batch = 0
         while os.path.isfile(f"blockchain/batches/{batch}.dat"):
@@ -38,10 +41,13 @@ class Chain:
         for file in os.listdir("blockchain/accounts"):
             os.remove(f"blockchain/accounts/{file}")
             
+        if os.path.isfile("blockchain/chaininfo.dat"):
+            os.remove("blockchain/chaininfo.dat")
+            
         
         
     def writeChainInfo(self):
-        with open("blockchain/chaininfo", "w") as file:
+        with open("blockchain/chaininfo.dat", "w") as file:
             file.write(json.dumps(self.__dict__))
         
 
@@ -51,6 +57,7 @@ class Chain:
         if not isinstance(block, dict):
             block = block.__dict__
             
+        print(self.height)
         assert (block["height"] - self.height) == 1
             
         self.height += 1
@@ -120,7 +127,7 @@ class Chain:
         return round(mostRecent["difficulty"] * modifier)
     
     def getInfoFromFile(self):
-        with open("blockchain/chaininfo", "r") as file:
+        with open("blockchain/chaininfo.dat", "r") as file:
             info = json.loads(file.read())
             
             self.height = info["height"]

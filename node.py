@@ -8,7 +8,7 @@ from urllib import request
 
 
 from block import *
-from crypto import hashHeader
+import crypto
 from transaction import *
 from chain import *
 from wallet import *
@@ -25,18 +25,81 @@ HOST = socket.gethostname()
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
 
-PORT = 8080
+port = 8080
 CWD = os.getcwd()
     
     
 
 
-
-
-
-
-
-
+#for now, only works when blockchain is small(it always will be nobody will use this)
+def getChainUpToDate(chain: Chain):
+    global port
+    
+    chain.initChain()
+    
+    nodes = []
+    with open("nodeinfo/nodes", "r") as toRead:
+        nodes = json.loads(toRead.read())
+    
+    
+    
+    #find first available node
+    for node in nodes:
+        downloadFromNode(chain, node)
+                    
+def downloadFromNode(chain: Chain, node):
+    
+    #not going to add to chain unless all blocks are verified
+    tempAdditions = []
+    
+    
+    result = ""    
+    try:
+        result = requests.get(f"http://{node}:{port}/test", timeout=1)
+    except:
+        return False
+    
+    #viable node
+    if result == "alive":
+        maxHeight = -1
+        try:
+            maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=1))
+        except:
+            return False
+        
+        #go on to next node
+        if maxHeight == -1:
+            return False
+        else:
+            #download everything
+            blockHeight = chain.height + 1
+            while blockHeight <= maxHeight:
+                request = f"http://{node}:{port}/block?height={blockHeight}"
+                newBlock = None
+                try:
+                    newBlock = requests.get(request, timeout=5)
+                except:
+                    return False
+                
+                if not chain.verifyBlock(block):
+                    return False
+                else:
+                    tempAdditions.append(block)
+                    
+    #made it to the end
+    
+    for block in tempAdditions:
+        chain.addBlock(block)
+        
+    chain.writeChainInfo()
+                
+                
+                
+                    
+                
+            
+        
+    
     
     
 
@@ -46,25 +109,34 @@ CWD = os.getcwd()
 
 
 class NodeHTTP(SimpleHTTPRequestHandler): 
-    global value    
-    value = 0
+    global port
+    port = 8080
     
     global transactionsPool
-    transactionsPool = []
+    transactionsPool = None
     
+    global block 
+    block = None
+    
+    global chain
+    chain = None
+    
+    global nodes
+    nodes = None
+
     global miner
-    miner = None
+    miner = None 
+    
+    global wallet 
+    wallet = None
+    
+    
      
     def do_GET(self) -> None:
-        global value 
         global transactionsPool
+        global chain
 
-        self.chain = Chain()
-        self.chain.getInfoFromFile()
-        
-        self.nodes = []
-        
-        self.initNodeInfo()
+        chain.getInfoFromFile()
         
         self.send_response(200)
         self.send_header("Content-type", "text/html")
@@ -73,60 +145,132 @@ class NodeHTTP(SimpleHTTPRequestHandler):
 
         total = self.path.split("?")
         
+        
+        self.queries = dict()
         if len(total) == 1:
             self.path = total[0]
         else:
             self.path = total[0]
             self.queries = dict(urllib.parse.parse_qsl(total[1]))
         
+        #try and add this requester to node list
+        self.registernode()
         
         match self.path:
+            case "/startnode":
+                self.startNode()
             case "/block":
-                self.block()
+                self.getBlock()
             case "/multiblock":
                 self.multiblock()
             case "/newtransaction":
                 self.newtransaction()
             case "/newblock":
                 self.newblock()
+            case "/sharetransactions":
+                self.shareTransactions()
             case "/registernode":
                 self.registernode()
             case "/test":
                 self.respond("alive")
+            case "/getheight":
+                self.respond(chain.height)
             case "/minersuccess":
-                print(self.address_string())
-            case "/startmining":
-                print(self.address_string())
-                self.startMining()
-                self.respond("Started mining lol, but this process is threaded so have fun or something")
+                self.minerSuccess()
             case _:
                 self.respond("unknown")
                 
-    
-    def initNodeInfo(self):
+    def startNode(self):
+        global nodes
+        global transactionsPool
+        global chain
+        global nodes
+        global miner
+        global wallet
+        
+        
+        #only can be called by local
+        if self.address_string() != "127.0.0.1":
+            return
+        
+        
+        #nodes are initalized from file
         if not os.path.isdir("nodeinfo"):
-            os.mkdir("nodeinfo")
-            
+                os.mkdir("nodeinfo")
+                
         if not os.path.isfile("nodes"):
             base = []
             with open("nodeinfo/nodes", "w") as toWrite:
                 toWrite.write(json.dumps(base))
         
         with open("nodeinfo/nodes", "r") as toRead:
-            self.nodes = json.loads(toRead.read())
-
+            nodes = list(set(json.loads(toRead.read())))
             
+        
+        #ask other nodes for transactions that have been missed
+        transactionsPool = self.askForTransactions()
+        chain = Chain()
+        chain.initChain()
+        
+        #wallet name sent in, download from file or create new one
+        wallet = Wallet(urllib.parse.unquote(self.queries["wallet"]))
+        wallet.initWallet()
+        
+        #we're on genesis
+        if chain.height == -1:
+            oldBlock = crypto.GENESIS_BASIS
+            
+            self.startMining(oldBlock)
+        else:
+            oldBlock = Chain.readBlock(chain.height)
+            
+            self.startMining(oldBlock)     
+        
+        self.respond("started!")
     
-    def startMining(self):
+    def startMining(self, oldBlock):
         global miner
-        miner = Popen("start python mine.py 313638393535333938335b7b2273656e646572223a202230303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030222c202274696d657374616d70223a20313638393535333938332c20226f757470757473223a205b7b227265636965766572223a2022303264613462333039363933376139396465633634303431383936343837303666636434333337303863303535383239643965363138666362313063363231323035222c2022616d6f756e74223a203130303030303030307d5d2c20226e6f6e6365223a203736372c20227369676e6174757265223a20223832306466316161623432336365303233323063303033383133303736313731336330386435633938326530616638356661376233343939363135343831323865663737653765383832623638303935656462363961313335316461396639323566376330623163326535323934303830656237613939336466623163306338222c20226e6f7465223a2022222c202268617368223a202266616339643063396538333337343034313331373830373131386533623835326338306431343463643139363234356533653639373736343665373139376263227d5d30 10000000 8080", shell=True, stdin=PIPE, stderr=PIPE, stdout=PIPE)
+        global port
+        global transactionsPool
+        global wallet
+        global block
+        
+        block = Block(wallet.public, oldBlock)
+        
+        for transac in set(transactionsPool):
+            block.addTransaction(transac)
+        
+        block.complete(wallet)
+        
+        requestString = f"start python mine.py {block.headerInfo} {block.difficulty} {port}"
+        miner = Popen(requestString, shell=True)
         
         
+    #cant be access out of the host computer, localhost request only
     def minerSuccess(self):
         global miner
+        global block
+        global chain
+        
+        if self.address_string() != "127.0.0.1":
+            self.respond("THIS ISNT LOCALHOST, ACCESS DENIED")
+            return
+        
         miner = None
         
-        #first check to see if block already exists, then go back to doing ur thing
+        nonce = int(self.queries["nonce"])
+        block.solidify(nonce)
+        
+        block = block.__dict__
+        
+        assert chain.verifyBlock(block)
+        chain.addBlock(block)
+        
+        self.broadcastBlock(block)
+        
+        #start it all over again bruh
+        
+        self.startMining(block)
         
         
                 
@@ -140,7 +284,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         self.wfile.write(bytes(response, "utf-8"))
                 
     
-    def block(self):
+    def getBlock(self):
         height = int(self.queries["height"]) 
         
         result = Chain.readBlock(height)
@@ -188,21 +332,41 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
     
     def newblock(self):
-        block = urllib.parse.unquote(self.queries["block"])
+        global chain
+        global miner
         
-        if self.chain.verifyBlock(block) == True:
-            self.chain.fufillVerifiedBlockTransactions(block)
-            self.chain.addBlock(block)
+        introducedBlock = urllib.parse.unquote(self.queries["block"])
+        
+        
+        if chain.verifyBlock(introducedBlock) == True:
+            #kill local miner
+            miner.kill()
+            
+            #verify, add locally
+            chain.fufillVerifiedBlockTransactions(introducedBlock)
+            chain.addBlock(introducedBlock)
+            
+            #broadcast to other nodes, but not the one that just sent it
+            self.broadcastBlock(introducedBlock, exclusions=[self.address_string()])
+            
+            #start process of mining
+            self.startMining()
+            
             self.respond("accepted")
         else:
             self.respond("rejected")
             
             
     def testNode(self):
-        url = f"http://{self.address_string()}:8080/test"
+        global PORT
+        
+        url = f"http://{self.address_string()}:{PORT}/test"
         
         
-        result = requests.get(url, timeout=1).text
+        try:
+            result = requests.get(url, timeout=1).text
+        except:
+            return "not_alive"
         
         
         return result
@@ -210,20 +374,107 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     
 
     def registernode(self):
+        global nodes
+        global port
+        
+        
         nodeIP = self.address_string()
+        
+        #not adding ourselfs lmao
+        if nodeIP == "127.0.0.1":
+            return 
         
         #testing to see if node is alive
         
         response = self.testNode()
         
+        #if isnt running correct node program, dont register
         if response != "alive":
             self.respond("nope")
             return
         else:
-            self.nodes.append(nodeIP)
+            #if unique add, else dont
+            if not nodeIP in nodes:
+                nodes.add(nodeIP)
+                
+                with open("nodeinfo/nodes", "w") as toWrite:
+                    toWrite.write(json.dumps(self.nodes))
+            else:
+                return 
             
-            with open("nodeinfo/nodes", "w") as toWrite:
-                toWrite.write(json.dumps(self.nodes))
+    def shareTransactions(self):
+        global transactionsPool
+        
+        self.respond(json.dumps(transactionsPool))
+        
+    def askForTransactions(self):
+        global port
+        global nodes
+        global chain
+        
+        #ongoing is all known verified transactions
+        ongoing = []
+        
+        for node in nodes:
+            request = f"http://{node}:{port}/sharetransactions"
+            
+            result = []
+            try:
+                result = requests.get(request, timeout=1).json()
+            except:
+                pass
+            
+            #too large dude
+            if len(result) > 100:
+                continue
+            
+            allVerified = True
+            for transac in result:
+                #if duplicate
+                if result.count(transac) != 1:
+                    allVerified = False
+                    break
+                
+                if chain.verifyIncomingTransaction(transac) == False:
+                    allVerified = False
+                    break
+                
+            #strive for longest list
+            if allVerified:
+                if len(result) > len(ongoing):
+                    ongoing = result
+                
+        return ongoing
+    
+        
+                    
+                
+    def broadcastBlock(self, introducedBlock, exclusions=[]):
+        #make it url safe
+        stringBlock = urllib.parse.quote(json.dumps(introducedBlock))
+        
+        for node in nodes:
+            if node in exclusions:
+                continue
+            
+            requestString = f"http://{node}:{port}/newblock?block={stringBlock}"
+            
+            try:
+                requests.get(requestString, timeout=5)
+                print(f"Block height {introducedBlock['height']} accepted by node at {node} ")
+            except:
+                return
+            
+            
+
+chain = Chain()
+chain.dumpChain()
+
+getChainUpToDate(chain)
+
+
+        
+            
 
         
 #server = ThreadingSimpleServer(("0.0.0.0", PORT), NodeHTTP)
@@ -235,7 +486,7 @@ def run(server_class=ThreadingSimpleServer, handler_class=NodeHTTP, port=8080, C
     
     server  = server_class(server_address, handler_class)
     
-    print("Serving HTTP traffic from", CWD, "on", HOST, "using port", PORT)
+    print("Serving HTTP traffic from", CWD, "on", HOST, "using port", port)
 
 
     try:

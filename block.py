@@ -14,7 +14,7 @@ class Block:
         self.height = self.tempPast["height"] + 1  #1 million subdivisions, 1 coin
         
         
-        self.difficulty = pastBlock["difficulty"]
+        self.difficulty = self.tempPast["difficulty"]
         if self.height != 0 and self.height % 144 == 0:
             self.difficulty = Chain.calculateDifficulty(self.height)
             
