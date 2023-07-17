@@ -45,7 +45,10 @@ def getChainUpToDate(chain: Chain):
     
     #find first available node
     for node in nodes:
-        downloadFromNode(chain, node)
+        val = downloadFromNode(chain, node)
+        print(val)
+        if val == True:
+            return
                     
 def downloadFromNode(chain: Chain, node):
     
@@ -55,21 +58,22 @@ def downloadFromNode(chain: Chain, node):
     
     result = ""    
     try:
-        result = requests.get(f"http://{node}:{port}/test", timeout=1)
+        result = requests.get(f"http://{node}:{port}/test", timeout=1).text
     except:
-        return False
+        return 1
     
     #viable node
     if result == "alive":
         maxHeight = -1
         try:
             maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=1))
-        except:
-            return False
+        except Exception as e:
+            print(e)
+            return 2
         
         #go on to next node
         if maxHeight == -1:
-            return False
+            return 3
         else:
             #download everything
             blockHeight = chain.height + 1
@@ -77,14 +81,17 @@ def downloadFromNode(chain: Chain, node):
                 request = f"http://{node}:{port}/block?height={blockHeight}"
                 newBlock = None
                 try:
-                    newBlock = requests.get(request, timeout=5)
+                    newBlock = json.loads(urllib.parse.unquote(requests.get(request, timeout=5)))
+                    print(newBlock)
                 except:
-                    return False
+                    return 4
                 
-                if not chain.verifyBlock(block):
-                    return False
+                if not chain.verifyBlock(newBlock):
+                    return 5
                 else:
-                    tempAdditions.append(block)
+                    tempAdditions.append(newBlock)
+    else:
+        return 6
                     
     #made it to the end
     
@@ -92,6 +99,8 @@ def downloadFromNode(chain: Chain, node):
         chain.addBlock(block)
         
     chain.writeChainInfo()
+
+    return True
                 
                 
                 
@@ -174,7 +183,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             case "/test":
                 self.respond("alive")
             case "/getheight":
-                self.respond(chain.height)
+                self.respond(int(chain.height))
             case "/minersuccess":
                 self.minerSuccess()
             case _:
@@ -420,7 +429,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
             result = []
             try:
-                result = requests.get(request, timeout=1).json()
+                result = json.loads(urllib.parse.unquote(requests.get(request, timeout=1)))
             except:
                 pass
             
@@ -468,8 +477,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
 
 chain = Chain()
-chain.dumpChain()
 chain.initChain()
+chain.dumpChain()
+
 
 getChainUpToDate(chain)
 
