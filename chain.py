@@ -135,14 +135,17 @@ class Chain:
     @staticmethod
     def calculateDifficulty(height) -> int: 
         if height < 144:
-            return STARTING_DIFFICULTY
+            return round(STARTING_DIFFICULTY)
+        
+        if height % 144 != 0:
+            return Chain.readBlock(height-1)["difficulty"]
 
         baseHeight = height - 144
 
         baseBlock = Chain.readBlock(baseHeight)
         mostRecent = Chain.readBlock(height-1)
 
-        expectedTimespan = 144 * 10 * 60 # one day worth of seconds
+        expectedTimespan = 60 * 60 * 24# one day worth of seconds
         timespan = mostRecent["timestamp"] - baseBlock["timestamp"]
 
 
@@ -303,14 +306,12 @@ class Chain:
         if block["height"] == 0:
             return True
         
-        
         try:
             block = block.__dict__
         except:
             if not isinstance(block, dict):
                 return False
-            
-        print(block["height"], self.height)
+
         lastBlock = self.readBlock(block["height"]-1)
     
 

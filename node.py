@@ -51,7 +51,6 @@ def getChainUpToDate(chain: Chain):
     #find first available node
     for node in nodes:
         val = downloadFromNode(chain, node)
-        print(val)
         if val == True:
             return
                     
@@ -492,6 +491,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
 
 chain = Chain()
+chain.dumpChain()
 chain.initChain()
 
 

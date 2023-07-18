@@ -18,8 +18,6 @@ class Block:
         if self.height != 0 and self.height % 144 == 0:
             self.difficulty = Chain.calculateDifficulty(self.height)
             
-        self.difficulty = round(self.difficulty)
-            
         self.version = 0.1
         self.nonce = None
         self.transactions = []
