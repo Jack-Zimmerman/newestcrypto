@@ -412,6 +412,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             else:
                 with open("nodeinfo/nodes.dat", "r") as toRead:
                     nodes = json.loads(toRead.read())
+        else:
+            with open("nodeinfo/nodes.dat", "r") as toRead:
+                nodes.append(self.address_string())
+                nodes = json.loads(toRead.read())
                 
         
         nodeIP = self.address_string()
