@@ -36,9 +36,14 @@ def getChainUpToDate(chain: Chain):
     global port
     
     chain.initChain()
+    chain.getInfoFromFile()
     
+    if not os.path.isfile("nodeinfo/nodes.dat"):
+        with open("nodeinfo/nodes.dat", "w") as toWrite:
+            toWrite.write("[]")
+            
     nodes = []
-    with open("nodeinfo/nodes", "r") as toRead:
+    with open("nodeinfo/nodes.dat", "r") as toRead:
         nodes = json.loads(toRead.read())
     
     
@@ -46,13 +51,14 @@ def getChainUpToDate(chain: Chain):
     #find first available node
     for node in nodes:
         val = downloadFromNode(chain, node)
+        print(val)
         if val == True:
             return
                     
 def downloadFromNode(chain: Chain, node):
     result = ""    
     try:
-        result = requests.get(f"http://{node}:{port}/test", timeout=1).text
+        result = requests.get(f"http://{node}:{port}/test", timeout=5).text
     except:
         return 1
     
@@ -60,9 +66,8 @@ def downloadFromNode(chain: Chain, node):
     if result == "alive":
         maxHeight = -1
         try:
-            maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=1))
+            maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=5).text)
         except Exception as e:
-            print(e)
             return 2
         
         #go on to next node
@@ -70,29 +75,30 @@ def downloadFromNode(chain: Chain, node):
             return 3
         else:
             #download everything
-            blockHeight = chain.height + 1
-            while blockHeight <= maxHeight:
-                request = f"http://{node}:{port}/block?height={blockHeight}"
-                newBlock = None
+            
+            while chain.height != maxHeight:
+                blockChunk = min(maxHeight-chain.height, 100)
+                request = f"http://{node}:{port}/multiblock?start={chain.height+1}&end={chain.height+blockChunk}"
+                newBlocks = None
                 try:
-                    newBlock = json.loads(urllib.parse.unquote(requests.get(request, timeout=5)))
+                    newBlocks = json.loads(urllib.parse.unquote(requests.get(request, timeout=5).text))
                 except:
                     return 4
                 
-                if not chain.verifyBlock(newBlock):
-                    #remove blocks
-                    for x in range(maxHeight-chain.height):
-                        chain.popBlock()
-                    return 5
-                else:
-                    chain.addBlock(newBlock)
+                for newBlock in newBlocks:
+                    if not chain.verifyBlock(newBlock):
+                        #remove blocks
+                        for x in range(maxHeight-chain.height):
+                            chain.popBlock()
+                        return 5
+                    else:
+                        print(f"Downloaded Block {newBlock['height']}")
+                        chain.addBlock(newBlock)
+
     else:
         return 6
                     
     #made it to the end
-    
-    for block in tempAdditions:
-        chain.addBlock(block)
         
     chain.writeChainInfo()
 
@@ -206,10 +212,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
                 
         if not os.path.isfile("nodes"):
             base = []
-            with open("nodeinfo/nodes", "w") as toWrite:
+            with open("nodeinfo/nodes.dat", "w") as toWrite:
                 toWrite.write(json.dumps(base))
         
-        with open("nodeinfo/nodes", "r") as toRead:
+        with open("nodeinfo/nodes.dat", "r") as toRead:
             nodes = list(set(json.loads(toRead.read())))
             
         
@@ -305,12 +311,13 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     
     #start and end inclusive
     def multiblock(self):
+        global chain
         start = int(self.queries["start"])
         end = int(self.queries["end"])
         
         
         #is end past current knowledge of chain
-        if end > self.chain.height:
+        if end > chain.height:
             self.respond("None")
             
             
@@ -328,10 +335,11 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
     def newtransaction(self):
         global transactionsPool
+        global chain
         
         transaction = urllib.parse.unquote(self.queries["transaction"])
         
-        if self.chain.verifyIncomingTransaction(transaction) == True:
+        if chain.verifyIncomingTransaction(transaction) == True:
             transactionsPool.append(transaction)
             self.respond("accepted")
         else:
@@ -342,7 +350,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global chain
         global miner
         
-        introducedBlock = urllib.parse.unquote(self.queries["block"])
+        introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
         
         
         if chain.verifyBlock(introducedBlock) == True:
@@ -384,6 +392,16 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global nodes
         global port
         
+        if nodes == None:
+            if not os.path.isfile("nodeinfo/nodes.dat"):
+                nodes = []
+                nodes.append(self.address_string())
+                with open("nodeinfo/nodes.dat", "w") as toWrite:
+                    toWrite.write(json.dumps(nodes))
+            else:
+                with open("nodeinfo/nodes.dat", "r") as toRead:
+                    nodes = json.loads(toRead.read())
+                
         
         nodeIP = self.address_string()
         
@@ -403,7 +421,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             if not nodeIP in nodes:
                 nodes.append(nodeIP)
                 
-                with open("nodeinfo/nodes", "w") as toWrite:
+                with open("nodeinfo/nodes.dat", "w") as toWrite:
                     toWrite.write(json.dumps(nodes))
             else:
                 return 
@@ -426,7 +444,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
             result = []
             try:
-                result = json.loads(urllib.parse.unquote(requests.get(request, timeout=1)))
+                result = json.loads(urllib.parse.unquote(requests.get(request, timeout=1).text))
             except:
                 pass
             
@@ -475,7 +493,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
 
 chain = Chain()
 chain.initChain()
-chain.getInfoFromFile()
 
 
 getChainUpToDate(chain)

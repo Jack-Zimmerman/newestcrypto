@@ -43,6 +43,8 @@ class Chain:
             
         if os.path.isfile("blockchain/chaininfo.dat"):
             os.remove("blockchain/chaininfo.dat")
+        
+
             
         
         
@@ -308,6 +310,7 @@ class Chain:
             if not isinstance(block, dict):
                 return False
             
+        print(block["height"], self.height)
         lastBlock = self.readBlock(block["height"]-1)
     
 
