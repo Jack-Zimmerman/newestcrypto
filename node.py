@@ -215,7 +215,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         if not os.path.isdir("nodeinfo"):
                 os.mkdir("nodeinfo")
                 
-        if not os.path.isfile("nodes"):
+        if not os.path.isfile("nodeinfo/nodes.dat"):
             base = []
             with open("nodeinfo/nodes.dat", "w") as toWrite:
                 toWrite.write(json.dumps(base))
