@@ -50,11 +50,6 @@ def getChainUpToDate(chain: Chain):
             return
                     
 def downloadFromNode(chain: Chain, node):
-    
-    #not going to add to chain unless all blocks are verified
-    tempAdditions = []
-    
-    
     result = ""    
     try:
         result = requests.get(f"http://{node}:{port}/test", timeout=1).text
@@ -85,9 +80,12 @@ def downloadFromNode(chain: Chain, node):
                     return 4
                 
                 if not chain.verifyBlock(newBlock):
+                    #remove blocks
+                    for x in range(maxHeight-chain.height):
+                        chain.popBlock()
                     return 5
                 else:
-                    tempAdditions.append(newBlock)
+                    chain.addBlock(newBlock)
     else:
         return 6
                     
@@ -219,6 +217,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         transactionsPool = self.askForTransactions()
         chain = Chain()
         chain.initChain()
+        chain.getInfoFromFile()
         
         #wallet name sent in, download from file or create new one
         wallet = Wallet(urllib.parse.unquote(self.queries["wallet"]))
@@ -227,14 +226,14 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         #we're on genesis
         if chain.height == -1:
             oldBlock = crypto.GENESIS_BASIS
-            
+
             self.startMining(oldBlock)
         else:
             oldBlock = Chain.readBlock(chain.height)
             
             self.startMining(oldBlock)     
         
-        self.respond("started!")
+        self.respond("started")
     
     def startMining(self, oldBlock):
         global miner
@@ -475,8 +474,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
 
 chain = Chain()
-chain.dumpChain()
 chain.initChain()
+chain.getInfoFromFile()
 
 
 getChainUpToDate(chain)

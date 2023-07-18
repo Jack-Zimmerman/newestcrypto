@@ -56,7 +56,7 @@ class Chain:
     def addBlock(self, block):
         if not isinstance(block, dict):
             block = block.__dict__
-    
+
         assert (block["height"] - self.height) == 1
             
         self.height += 1
@@ -88,6 +88,30 @@ class Chain:
         self.fufillVerifiedBlockTransactions(block)
                 
         return True
+    
+    #remove block from top of chain
+    def popBlock(self):
+        #get batch file
+        targetFile = f"blockchain/batches/{self.height//100}.dat"
+        
+        assert os.path.isfile(targetFile)
+        
+        chunks = []
+        with open(targetFile, "r") as toRead:
+            chunks = json.loads(toRead.read())
+            
+        assert len(chunks) >= 1
+            
+        #if first block in file
+        if len(chunks) == 1:
+            #delete file
+            os.remove(targetFile)
+        else:
+            #remove last block
+            chunks.pop()
+            with open(targetFile, "w") as toWrite:
+                toWrite.write(json.dumps(chunks))
+
             
     
     @staticmethod
