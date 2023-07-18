@@ -245,7 +245,6 @@ class Chain:
         else:
             changedNonce = oldInfo["nonce"]
             if nonce != None:
-                assert nonce != oldInfo["nonce"]
                 assert max(nonce, oldInfo["nonce"]) == nonce
                 
                 changedNonce = nonce
@@ -313,6 +312,7 @@ class Chain:
                 return False
 
         lastBlock = self.readBlock(block["height"]-1)
+        print(block["height"])
     
 
         #test to see if hash is valid

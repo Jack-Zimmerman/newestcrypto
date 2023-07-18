@@ -40,9 +40,9 @@ def getChainUpToDate(chain: Chain):
     
     if not os.path.isfile("nodeinfo/nodes.dat"):
         with open("nodeinfo/nodes.dat", "w") as toWrite:
-            toWrite.write("[]")
+            toWrite.write('["192.168.68.79"]')
             
-    nodes = []
+    nodes = ["192.168.68.79"]
     with open("nodeinfo/nodes.dat", "r") as toRead:
         nodes += json.loads(toRead.read())
     
@@ -145,11 +145,14 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     global wallet 
     wallet = None
     
+    global started
+    started = False
     
      
     def do_GET(self) -> None:
         global transactionsPool
         global chain
+        global started
 
         chain.getInfoFromFile()
         
@@ -167,6 +170,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         else:
             self.path = total[0]
             self.queries = dict(urllib.parse.parse_qsl(total[1]))
+        
+        if not started:
+            return
         
         #try and add this requester to node list
         if self.path != "/test":
@@ -204,6 +210,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global miner
         global wallet
         global port
+        global started
+        
+
         
         
         #only can be called by local
@@ -213,19 +222,21 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         #nodes are initalized from file
         if not os.path.isdir("nodeinfo"):
-                os.mkdir("nodeinfo")
+            os.mkdir("nodeinfo")
                 
         if not os.path.isfile("nodeinfo/nodes.dat"):
-            base = []
+            base = ["192.168.68.79"]
             with open("nodeinfo/nodes.dat", "w") as toWrite:
                 toWrite.write(json.dumps(base))
         
         with open("nodeinfo/nodes.dat", "r") as toRead:
-            nodes = list(set(json.loads(toRead.read())))
+            nodes = json.loads(toRead.read())
 
+
+        started = True
         for node in nodes:
             try:
-                requests.get(f"http://{node}:{port}/registernode")
+                requests.get(f"http://{node}:{port}/registernode", timeout=1)
             except:
                 pass
             
@@ -249,6 +260,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             oldBlock = Chain.readBlock(chain.height)
             
             self.startMining(oldBlock)     
+
+        
         
         self.respond("started")
     
@@ -360,23 +373,26 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     def newblock(self):
         global chain
         global miner
+        global started
         
         introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
         
-        
         if chain.verifyBlock(introducedBlock) == True:
             #kill local miner
-            miner.kill()
+            if miner != None:
+                miner.kill()
             
             #verify, add locally
             chain.fufillVerifiedBlockTransactions(introducedBlock)
             chain.addBlock(introducedBlock)
             
+            self.startMining(introducedBlock)
+            
             #broadcast to other nodes, but not the one that just sent it
             self.broadcastBlock(introducedBlock, exclusions=[self.address_string()])
             
             #start process of mining
-            self.startMining()
+            
             
             self.respond("accepted")
         else:
@@ -405,7 +421,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         if nodes == None:
             if not os.path.isfile("nodeinfo/nodes.dat"):
-                nodes = []
+                nodes = ["192.168.68.79"]
                 nodes.append(self.address_string())
                 with open("nodeinfo/nodes.dat", "w") as toWrite:
                     toWrite.write(json.dumps(nodes))
