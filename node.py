@@ -77,6 +77,9 @@ def downloadFromNode(chain: Chain, node):
         else:
             #download everything
             
+            if maxHeight <= chain.height:
+                return 3.5
+            
             while chain.height != maxHeight:
                 blockChunk = min(maxHeight-chain.height, 100)
                 request = f"http://{node}:{port}/multiblock?start={chain.height+1}&end={chain.height+blockChunk}"
