@@ -44,8 +44,10 @@ def getChainUpToDate(chain: Chain):
             
     nodes = []
     with open("nodeinfo/nodes.dat", "r") as toRead:
-        nodes = json.loads(toRead.read())
+        nodes += json.loads(toRead.read())
     
+    if "192.168.68.79" not in nodes:
+        nodes.append("192.168.68.79")
     
     
     #find first available node
@@ -198,6 +200,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global nodes
         global miner
         global wallet
+        global port
         
         
         #only can be called by local
@@ -216,6 +219,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         with open("nodeinfo/nodes.dat", "r") as toRead:
             nodes = list(set(json.loads(toRead.read())))
+
+        for node in nodes:
+            try:
+                requests.get(f"http://{node}:{port}/registernode")
+            except:
+                pass
             
         
         #ask other nodes for transactions that have been missed
