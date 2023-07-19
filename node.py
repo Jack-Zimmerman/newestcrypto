@@ -322,6 +322,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         broadcastBlock = block.__dict__
         block = None
         
+        print(chain.verifyBlock(broadcastBlock))
         assert chain.verifyBlock(broadcastBlock)
         
         chain.addBlock(broadcastBlock)
