@@ -296,6 +296,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global block
         global chain
         
+        if block == None:
+            return
+        
         if self.address_string() != "127.0.0.1":
             self.respond("THIS ISNT LOCALHOST, ACCESS DENIED")
             return
