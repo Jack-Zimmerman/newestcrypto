@@ -320,12 +320,18 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         miner = None
         
         nonce = int(self.queries["nonce"])
+        
+        #if its a turd, start over
+        if not headerHashAndCheck(block.headerInfo, nonce, block.difficulty):
+            self.startMining(Chain.readBlock(chain.height))
+            analyzing = False
+            
         block.solidify(nonce)
         
         broadcastBlock = block.__dict__
         block = None
         
-        print(broadcastBlock)
+        
         assert chain.verifyBlock(broadcastBlock)
         
         chain.addBlock(broadcastBlock)
