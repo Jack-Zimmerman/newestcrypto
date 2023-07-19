@@ -15,7 +15,7 @@ from wallet import *
 import requests
 import random
 
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, CREATE_NEW_CONSOLE
 
 import time
 import types
@@ -287,12 +287,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         block.complete(wallet)
         
-        requestString = f"start python mine.py {block.headerInfo} {block.difficulty} {port}"
+        requestArray = (f"python mine.py {block.headerInfo} {block.difficulty} {port}").split(" ")
         
         if miner != None:
             miner.kill()
             
-        miner = Popen(requestString)
+        miner = Popen(requestArray, creationflags=CREATE_NEW_CONSOLE)
         
         
     #cant be access out of the host computer, localhost request only
