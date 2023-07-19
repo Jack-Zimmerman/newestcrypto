@@ -287,6 +287,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         block.complete(wallet)
         
         requestString = f"start python mine.py {block.headerInfo} {block.difficulty} {port}"
+        
+        if miner != None:
+            miner.kill()
+            
         miner = Popen(requestString, shell=True)
         
         
