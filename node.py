@@ -305,6 +305,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global analyzing
         
         if analyzing:
+            print("oops")
             return
         
         analyzing = True
@@ -333,9 +334,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         #start it all over again bruh
         
+        analyzing = False
         self.startMining(broadcastBlock)
         
-        analyzing = False
+        
         
                 
                 

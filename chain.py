@@ -315,6 +315,7 @@ class Chain:
                 return False
 
         if block["height"] - self.height != 1:
+            print(1)
             return False
 
         lastBlock = self.readBlock(block["height"]-1)
@@ -327,18 +328,23 @@ class Chain:
         
         #if block has invalid difficulty
         if block["difficulty"] != difficulty:
+            print(2)
             return False
         
         #lying about header
         if intendedHeader != block["header"]:
+            print(3)
             return False
         
         #check to see proof of work
+        print(headerHashAndCheck(headerInfo, block["nonce"], difficulty, test=True))
         if not headerHashAndCheck(headerInfo, block["nonce"], difficulty):
+            print(4)
             return False
         
         #check timeframe, cant be before previous block
         if block["timestamp"] < lastBlock["timestamp"]:
+            print(5)
             return False
         
         #now on to transactions
@@ -347,16 +353,19 @@ class Chain:
         #filtering other transactions
         coinbaseTransactions = list(filter(lambda transac: transac["sender"] == COINBASE, block["transactions"]))
         if len(coinbaseTransactions) != 1:
+            print(6)
             return False
         
         coinbaseTransac = coinbaseTransactions[0]
 
         #can go anywhere, but must be reward amount
         if Transaction.calculateTotal(coinbaseTransac) != REWARD:
+            print(7)
             return False
         
         #verify transac signature
         if not Wallet.verifyTransactionSignature(coinbaseTransac, coinbaseException=block["miner"]):
+            print(8)
             return False
         
         
@@ -366,6 +375,7 @@ class Chain:
                 continue 
             
             if not self.verifyIncomingTransaction(transac):
+                print(9)
                 return False
             
         return True
