@@ -213,7 +213,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global started
         
 
-        
+        if started ==True:
+            return
         
         #only can be called by local
         if self.address_string() != "127.0.0.1":
@@ -261,8 +262,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
             self.startMining(oldBlock)     
 
-        
-        
+
         self.respond("started")
     
     def startMining(self, oldBlock):
