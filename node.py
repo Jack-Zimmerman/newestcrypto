@@ -151,8 +151,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     global started
     started = False
     
-    global analyzing 
-    analyzing = False
     
      
     def do_GET(self) -> None:
@@ -302,12 +300,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global miner
         global block
         global chain
-        global analyzing
         
-        if analyzing:
-            return
-        
-        analyzing = True
         
         if block == None:
             return
@@ -323,7 +316,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         #if its a turd, start over
         if not headerHashAndCheck(block.headerInfo, nonce, block.difficulty):
             self.startMining(Chain.readBlock(chain.height))
-            analyzing = False
             
         block.solidify(nonce)
         
@@ -339,7 +331,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         #start it all over again bruh
         
-        analyzing = False
         self.startMining(broadcastBlock)
         
         
@@ -408,17 +399,11 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global chain
         global miner
         global started
-        global analyzing
-        
-        if analyzing:
-            return
-        
-        analyzing = True
+ 
         
         introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
 
         if chain.verifyBlock(introducedBlock) == True:
-            analyzing = False
             #kill local miner
             if miner != None:
                 miner.kill()
