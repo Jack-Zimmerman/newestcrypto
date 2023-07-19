@@ -70,6 +70,9 @@ def downloadFromNode(chain: Chain, node):
             maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=5).text)
         except Exception as e:
             return 2
+
+
+        requests.get(f"http://{node}:{port}/registerfuturenode")
         
         #go on to next node
         if maxHeight == -1:
@@ -173,6 +176,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         if not started and self.path != "/startnode":
             return
+        else:
+            self.startNode(localCall=True)
         
         #try and add this requester to node list
         if self.path != "/test":
@@ -188,13 +193,14 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             case "/newtransaction":
                 self.newtransaction()
             case "/newblock":
+                print("hello")
                 self.newblock()
             case "/sharetransactions":
                 self.shareTransactions()
             case "/registernode":
                 self.registernode()
             case "/registerfuturenode":
-                self.registerFutureNode()
+                self.registernode(future=True)
             case "/test":
                 self.respond("alive")
             case "/getheight":
@@ -204,7 +210,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             case _:
                 self.respond("unknown")
                 
-    def startNode(self):
+    def startNode(self, localCall=False):
         global nodes
         global transactionsPool
         global chain
@@ -219,7 +225,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             return
         
         #only can be called by local
-        if self.address_string() != "127.0.0.1":
+        if self.address_string() != "127.0.0.1" and not localCall:
             return
         
         
@@ -378,7 +384,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global started
         
         introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
-        
+
         if chain.verifyBlock(introducedBlock) == True:
             #kill local miner
             if miner != None:
@@ -522,8 +528,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             requestString = f"http://{node}:{port}/newblock?block={stringBlock}"
             
             try:
-                requests.get(requestString, timeout=5)
-                print(f"Block height {introducedBlock['height']} accepted by node at {node} ")
+                result = requests.get(requestString).text
+                print(f"Block height {introducedBlock['height']} {result} by node at {node} ")
             except:
                 return
             
