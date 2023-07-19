@@ -171,7 +171,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.path = total[0]
             self.queries = dict(urllib.parse.parse_qsl(total[1]))
         
-        if not started:
+        if not started and self.path != "/startnode":
             return
         
         #try and add this requester to node list
