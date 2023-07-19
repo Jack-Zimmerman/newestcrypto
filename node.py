@@ -292,7 +292,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         if miner != None:
             miner.kill()
             
-        miner = Popen(requestString, shell=True)
+        miner = Popen(requestString)
         
         
     #cant be access out of the host computer, localhost request only
@@ -311,6 +311,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         miner = None
         
+        
         nonce = int(self.queries["nonce"])
         
         #if its a turd, start over
@@ -322,7 +323,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         broadcastBlock = block.__dict__
         block = None
         
-        
+        print(chain.verifyBlock(broadcastBlock))
         assert chain.verifyBlock(broadcastBlock)
         
         chain.addBlock(broadcastBlock)
