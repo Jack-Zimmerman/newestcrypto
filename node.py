@@ -256,7 +256,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         chain.getInfoFromFile()
         
         #wallet name sent in, download from file or create new one
-        print(sys.argv)
         wallet = Wallet(sys.argv[1])
         wallet.initWallet()
         
@@ -323,7 +322,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         broadcastBlock = block.__dict__
         block = None
         
-        print(chain.verifyBlock(broadcastBlock))
         assert chain.verifyBlock(broadcastBlock)
         
         chain.addBlock(broadcastBlock)
@@ -409,8 +407,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             if miner != None:
                 miner.kill()
             
-            #verify, add locally
-            chain.fufillVerifiedBlockTransactions(introducedBlock)
+            #verify, add locally, reflect in payments
             chain.addBlock(introducedBlock)
             
             self.startMining(introducedBlock)

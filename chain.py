@@ -337,7 +337,6 @@ class Chain:
             return False
         
         #check to see proof of work
-        print(headerHashAndCheck(headerInfo, block["nonce"], difficulty, test=True))
         if not headerHashAndCheck(headerInfo, block["nonce"], difficulty):
             print(4)
             return False

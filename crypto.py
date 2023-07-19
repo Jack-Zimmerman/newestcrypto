@@ -25,8 +25,6 @@ def headerHashAndCheck(headerInfo, nonce, difficulty, test=False):
     
     intValProof = int(computeDoubleHash(str(newVal)), 16)
     
-    if test==True:
-        print(intValProof/target)
     
     return intValProof < target
 
@@ -49,7 +47,7 @@ REWARD = 100*COIN
 #10 MEGAHASHES
 KILOHASH = 1000
 MEGAHASH = KILOHASH*KILOHASH
-STARTING_DIFFICULTY = KILOHASH*100
+STARTING_DIFFICULTY = MEGAHASH
 
 
 GENESIS_BASIS = {
