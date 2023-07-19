@@ -305,7 +305,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global analyzing
         
         if analyzing:
-            print("oops")
             return
         
         analyzing = True
@@ -419,6 +418,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
 
         if chain.verifyBlock(introducedBlock) == True:
+            analyzing = False
             #kill local miner
             if miner != None:
                 miner.kill()
@@ -439,7 +439,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         else:
             self.respond("rejected")
             
-        analyzing = False
+        
             
             
     def testNode(self):
