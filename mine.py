@@ -9,7 +9,6 @@ def mine(headerInfo, difficulty, returnPort):
     checkpoint = time.time()
     nonce = 0
     while not headerHashAndCheck(headerInfo, nonce, difficulty):
-        print(nonce)
         nonce += 1
         
         if nonce % 100000 == 0:
@@ -23,8 +22,6 @@ def mine(headerInfo, difficulty, returnPort):
     #if it gets to this point, it must have been successful
     
     request = f"http://localhost:{returnPort}/minersuccess?nonce={nonce}"
-    
-    print(request)
     
     requests.get(request)
     
