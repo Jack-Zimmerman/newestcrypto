@@ -151,6 +151,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     global started
     started = False
     
+    global analyzing 
+    analyzing = False
+    
      
     def do_GET(self) -> None:
         global transactionsPool
@@ -299,6 +302,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global miner
         global block
         global chain
+        global analyzing
+        
+        if analyzing:
+            return
+        
+        analyzing = True
         
         if block == None:
             return
@@ -315,7 +324,9 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         broadcastBlock = block.__dict__
         block = None
         
+        print(broadcastBlock)
         assert chain.verifyBlock(broadcastBlock)
+        
         chain.addBlock(broadcastBlock)
         
         self.broadcastBlock(broadcastBlock)
@@ -324,6 +335,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         self.startMining(broadcastBlock)
         
+        analyzing = False
         
                 
                 
@@ -389,6 +401,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global chain
         global miner
         global started
+        global analyzing
+        
+        if analyzing:
+            return
+        
+        analyzing = True
         
         introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
 
@@ -412,6 +430,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.respond("accepted")
         else:
             self.respond("rejected")
+            
+        analyzing = False
             
             
     def testNode(self):
@@ -558,7 +578,7 @@ getChainUpToDate(chain)
 
     
     
-def run(server_class=ThreadingSimpleServer, handler_class=NodeHTTP, port=3141, CWD=None, HOST=None):
+def run(server_class=HTTPServer, handler_class=NodeHTTP, port=3141, CWD=None, HOST=None):
     server_address = ("0.0.0.0", port)
     
     server  = server_class(server_address, handler_class)
