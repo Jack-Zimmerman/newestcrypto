@@ -157,12 +157,16 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global chain
         global started
 
+        
+        
         chain.getInfoFromFile()
         
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
         
+        if not started:
+            self.startNode(localCall=True)
 
         total = self.path.split("?")
         
@@ -173,11 +177,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         else:
             self.path = total[0]
             self.queries = dict(urllib.parse.parse_qsl(total[1]))
-        
-        if not started and self.path != "/startnode":
-            return
-        else:
-            self.startNode(localCall=True)
         
         #try and add this requester to node list
         if self.path != "/test":
@@ -193,7 +192,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             case "/newtransaction":
                 self.newtransaction()
             case "/newblock":
-                print("hello")
                 self.newblock()
             case "/sharetransactions":
                 self.shareTransactions()
@@ -257,7 +255,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         chain.getInfoFromFile()
         
         #wallet name sent in, download from file or create new one
-        wallet = Wallet(urllib.parse.unquote(self.queries["wallet"]))
+        print(sys.argv)
+        wallet = Wallet(sys.argv[1])
         wallet.initWallet()
         
         #we're on genesis
@@ -282,7 +281,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         block = Block(wallet.public, oldBlock)
         
-        for transac in set(transactionsPool):
+        for transac in transactionsPool:
             block.addTransaction(transac)
         
         block.complete(wallet)
@@ -306,16 +305,17 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         nonce = int(self.queries["nonce"])
         block.solidify(nonce)
         
-        block = block.__dict__
+        broadcastBlock = block.__dict__
+        block = None
         
-        assert chain.verifyBlock(block)
-        chain.addBlock(block)
+        assert chain.verifyBlock(broadcastBlock)
+        chain.addBlock(broadcastBlock)
         
-        self.broadcastBlock(block)
+        self.broadcastBlock(broadcastBlock)
         
         #start it all over again bruh
         
-        self.startMining(block)
+        self.startMining(broadcastBlock)
         
         
                 

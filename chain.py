@@ -60,8 +60,9 @@ class Chain:
             block = block.__dict__
 
         assert (block["height"] - self.height) == 1
+        
             
-        self.height += 1
+        
         
         blockAlreadyInChain = (self.readBlock(block["height"]) != None)
         
@@ -69,6 +70,8 @@ class Chain:
             return False
         
         assert self.verifyBlock(block)
+
+        self.height += 1
         
         #new file every 100 blocks
         file = f"blockchain/batches/{block['height']//100}.dat"
@@ -310,6 +313,9 @@ class Chain:
         except:
             if not isinstance(block, dict):
                 return False
+
+        if block["height"] - self.height != 1:
+            return False
 
         lastBlock = self.readBlock(block["height"]-1)
     
