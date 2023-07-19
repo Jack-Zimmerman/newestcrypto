@@ -193,6 +193,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
                 self.shareTransactions()
             case "/registernode":
                 self.registernode()
+            case "/registerfuturenode":
+                self.registerFutureNode()
             case "/test":
                 self.respond("alive")
             case "/getheight":
@@ -415,7 +417,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
     
     
 
-    def registernode(self):
+    def registernode(self, future=False):
         global nodes
         global port
         
@@ -442,7 +444,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         #testing to see if node is alive
         
-        response = self.testNode()
+        response = "alive"
+        if future != False:
+            response = self.testNode()
+        
         
         #if isnt running correct node program, dont register
         if response != "alive": 
@@ -456,6 +461,8 @@ class NodeHTTP(SimpleHTTPRequestHandler):
                     toWrite.write(json.dumps(nodes))
             else:
                 return 
+    
+    
             
     def shareTransactions(self):
         global transactionsPool

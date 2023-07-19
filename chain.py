@@ -312,7 +312,6 @@ class Chain:
                 return False
 
         lastBlock = self.readBlock(block["height"]-1)
-        print(block["height"])
     
 
         #test to see if hash is valid
