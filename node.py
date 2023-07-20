@@ -547,7 +547,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             requestString = f"http://{node}:{port}/newblock?block={stringBlock}"
             
             try:
-                result = requests.get(requestString).text
+                result = requests.get(requestString, timeout=1).text
                 print(f"Block height {introducedBlock['height']} {result} by node at {node} ")
             except:
                 return
