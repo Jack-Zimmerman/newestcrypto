@@ -314,6 +314,7 @@ class Chain:
             if not isinstance(block, dict):
                 return False
 
+        print(block["height"], self.height)
         if block["height"] - self.height != 1:
             print(1)
             return False
@@ -336,7 +337,7 @@ class Chain:
             print(3)
             return False
         
-        #check to see proof of work
+        #check to see proof of work 
         if not headerHashAndCheck(headerInfo, block["nonce"], difficulty):
             print(4)
             return False

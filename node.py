@@ -59,7 +59,7 @@ def getChainUpToDate(chain: Chain):
 def downloadFromNode(chain: Chain, node):
     result = ""    
     try:
-        result = requests.get(f"http://{node}:{port}/test", timeout=5).text
+        result = requests.get(f"http://{node}:{port}/test", timeout=1).text
     except:
         return 1
     
@@ -67,7 +67,7 @@ def downloadFromNode(chain: Chain, node):
     if result == "alive":
         maxHeight = -1
         try:
-            maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=5).text)
+            maxHeight = int(requests.get(f"http://{node}:{port}/getheight", timeout=1).text)
         except Exception as e:
             return 2
 
@@ -88,7 +88,7 @@ def downloadFromNode(chain: Chain, node):
                 request = f"http://{node}:{port}/multiblock?start={chain.height+1}&end={chain.height+blockChunk}"
                 newBlocks = None
                 try:
-                    newBlocks = json.loads(urllib.parse.unquote(requests.get(request, timeout=5).text))
+                    newBlocks = json.loads(urllib.parse.unquote(requests.get(request, timeout=1).text))
                 except:
                     return 4
                 
@@ -322,7 +322,6 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         broadcastBlock = block.__dict__
         block = None
         
-        print(chain.verifyBlock(broadcastBlock))
         assert chain.verifyBlock(broadcastBlock)
         
         chain.addBlock(broadcastBlock)
@@ -332,11 +331,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         #start it all over again bruh
         
         self.startMining(broadcastBlock)
-        
-        
-        
-                
-                
+                        
         
     def respond(self, response):
         assert isinstance(response, str)
@@ -395,6 +390,30 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.respond("rejected")
             
     
+    def getBackUpToSpeed(self, finalHeight):
+        global chain
+        
+        request = f"http://{self.address_string()}:3141/multiblock?start={chain.height+1}&end={finalHeight}"
+        
+        result = None
+        try:
+            result = json.loads(urllib.parse.unquote(requests.get(request, timeout=1).text))
+        except:
+            #failed ask
+            return False
+        
+        #get as close to up to date as possible
+        for newBlock in result:
+            if chain.verifyBlock(newBlock) == True:
+                chain.addBlock(newBlock)
+            else:
+                return False
+            
+        return True
+                
+                
+            
+    
     def newblock(self):
         global chain
         global miner
@@ -402,6 +421,11 @@ class NodeHTTP(SimpleHTTPRequestHandler):
  
         
         introducedBlock = json.loads(urllib.parse.unquote(self.queries["block"]))
+        
+        #if ahead of schedule
+        if introducedBlock["height"] - chain.height > 1:
+            #give it a chance by asking that node for more info
+            self.getBackUpToSpeed(introducedBlock["height"]-1)
 
         if chain.verifyBlock(introducedBlock) == True:
             #kill local miner
