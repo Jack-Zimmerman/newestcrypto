@@ -260,14 +260,14 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         wallet.initWallet()
         
         #we're on genesis
+        oldBlock = None
         if chain.height == -1:
             oldBlock = crypto.GENESIS_BASIS
-
-            self.startMining(oldBlock)
         else:
             oldBlock = Chain.readBlock(chain.height)
             
-            self.startMining(oldBlock)     
+        
+        self.startMining(oldBlock)     
 
 
         self.respond("started")
@@ -318,6 +318,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         #if its a turd, start over
         if not headerHashAndCheck(block.headerInfo, nonce, block.difficulty):
             self.startMining(Chain.readBlock(chain.height))
+            return
             
         block.solidify(nonce)
         
@@ -430,7 +431,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         #if ahead of schedule
         if introducedBlock["height"] - chain.height > 1:
             #give it a chance by asking that node for more info
-            print("Tried to get back up to speed, success: " + self.getBackUpToSpeed(self.address_string(), introducedBlock["height"]-1))
+            print("Tried to get back up to speed, success: " + str(self.getBackUpToSpeed(self.address_string(), introducedBlock["height"]-1)))
 
 
         if introducedBlock["height"] <= chain.height:
@@ -445,10 +446,11 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             #verify, add locally, reflect in payments
             chain.addBlock(introducedBlock)
             
-            self.startMining(introducedBlock)
+            self.broadcastBlock(introducedBlock, exclusions=[self.address_string()])
             
             #broadcast to other nodes, but not the one that just sent it
-            self.broadcastBlock(introducedBlock, exclusions=[self.address_string()])
+            
+            self.startMining(Chain.readBlock(chain.height))
             
             #start process of mining
             
