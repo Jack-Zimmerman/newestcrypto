@@ -279,6 +279,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         global wallet
         global block
         
+        if miner != None:
+            miner.kill()
+            
+        
         block = Block(wallet.public, oldBlock)
         
         for transac in transactionsPool:
@@ -288,9 +292,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         requestArray = (f"python mine.py {block.headerInfo} {block.difficulty} {port}").split(" ")
         
-        if miner != None:
-            miner.kill()
-            
+        
         miner = Popen(requestArray, creationflags=CREATE_NEW_CONSOLE)
         
         
@@ -395,6 +397,7 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         
         request = f"http://{nodeIP}:3141/multiblock?start={chain.height+1}&end={finalHeight}"
         
+        
         result = None
         try:
             result = json.loads(urllib.parse.unquote(requests.get(request, timeout=1).text))
@@ -403,10 +406,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             return False
         
         #get as close to up to date as possible
-        for newBlock in result:
+        for relHeight, newBlock in enumerate(result):
             if chain.verifyBlock(newBlock) == True:
                 chain.addBlock(newBlock)
             else:
+                if relHeight != 0:
+                    self.startMining(result[relHeight])
                 return False
             
         return True
