@@ -390,10 +390,10 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             self.respond("rejected")
             
     
-    def getBackUpToSpeed(self, finalHeight):
+    def getBackUpToSpeed(self, nodeIP, finalHeight):
         global chain
         
-        request = f"http://{self.address_string()}:3141/multiblock?start={chain.height+1}&end={finalHeight}"
+        request = f"http://{nodeIP}:3141/multiblock?start={chain.height+1}&end={finalHeight}"
         
         result = None
         try:
@@ -425,8 +425,13 @@ class NodeHTTP(SimpleHTTPRequestHandler):
         #if ahead of schedule
         if introducedBlock["height"] - chain.height > 1:
             #give it a chance by asking that node for more info
-            self.getBackUpToSpeed(introducedBlock["height"]-1)
+            print("Tried to get back up to speed, success: " + self.getBackUpToSpeed(self.address_string(), introducedBlock["height"]-1))
 
+
+        if introducedBlock["height"] <= chain.height:
+            #request that other node try to get up to speed
+            self.respond(f"adjust:{chain.height}")
+        
         if chain.verifyBlock(introducedBlock) == True:
             #kill local miner
             if miner != None:
@@ -572,6 +577,12 @@ class NodeHTTP(SimpleHTTPRequestHandler):
             
             try:
                 result = requests.get(requestString, timeout=1).text
+                
+                if result.startswith("adjust"):
+                    neededHeight = int(result.split(":")[1])
+                    
+                    self.getBackUpToSpeed(node, neededHeight)
+                    
                 print(f"Block height {introducedBlock['height']} {result} by node at {node} ")
             except:
                 return
